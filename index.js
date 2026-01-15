@@ -4,6 +4,7 @@ import * as os from 'os';
 import { JSDOM } from 'jsdom';
 import FauxCode from './src/FauxCode';
 import { getRecentFiles } from './src/fileScanner';
+import { highlightCode, tokensToHtml, detectLanguage } from './src/syntaxHighlighter';
 import sharp from 'sharp';
 
 // Configuration
@@ -26,22 +27,26 @@ const options = {
 };
 
 /**
- * Convert code file content to DOM elements for FauxCode
+ * Convert code file content to DOM elements for FauxCode with syntax highlighting
  */
-const codeToDOM = (codeContent, language = 'javascript') => {
+const codeToDOM = (codeContent, filePath = '') => {
   const maxLineWidth = 120; // Limit max line width to normalize column widths
   const lines = codeContent.split('\n').slice(0, 50); // Limit to 50 lines per file
+  const language = detectLanguage(codeContent, filePath);
   const { window } = new JSDOM(`<!DOCTYPE html><html><body></body></html>`);
   const { document } = window;
 
   const elements = lines.map((line) => {
     // Truncate lines longer than maxLineWidth
     const truncatedLine = line.length > maxLineWidth ? line.slice(0, maxLineWidth) : line;
+    
+    // Highlight code and get tokens
+    const tokens = highlightCode(truncatedLine, language);
+    const highlightedHtml = tokensToHtml(tokens);
+
     const div = document.createElement('div');
     div.className = 'blob-code-inner';
-    const span = document.createElement('span');
-    span.textContent = truncatedLine || '\n';
-    div.appendChild(span);
+    div.innerHTML = highlightedHtml || '&nbsp;';
     return div;
   });
 
@@ -55,7 +60,7 @@ const generateFauxCodeForFile = (filePath) => {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
     const fileName = path.basename(filePath);
-    const elements = codeToDOM(content);
+    const elements = codeToDOM(content, filePath);
     const fauxCode = new FauxCode(elements, options);
     return {
       svg: fauxCode.render(),
