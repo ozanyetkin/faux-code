@@ -17,8 +17,8 @@ const WALLPAPER_HEIGHT = 2160;
 
 const options = {
   theme: 'dark', // 'light' or 'dark' mode
-  fontSize: 4, // Line thickness and width (same for all faux codes)
-  leading: 8, // Space between lines (tighter for multiple files)
+  fontSize: 6, // Line thickness and width (same for all faux codes)
+  leading: 12, // Space between lines (tighter for multiple files)
   lineCap: 'round', // Line ends 'square' or 'round'
   margin: 15, // Margin around code to prevent cropping
   lineNumbers: false, // Disable line numbers to maximize code area
@@ -81,7 +81,7 @@ const combineSVGsToWallpaper = async (svgData) => {
       width: WALLPAPER_WIDTH,
       height: WALLPAPER_HEIGHT,
       channels: 4,
-      background: { r: 13, g: 17, b: 23, alpha: 1 }, // Dark background
+      background: { r: 0, g: 0, b: 0, alpha: 1 }, // Pure black background (#000000)
     },
   }).png();
 
