@@ -8,7 +8,7 @@ import sharp from 'sharp';
 
 // Configuration
 const projectsDir = path.join(os.homedir(), 'Desktop', 'Projects');
-const numberOfFiles = 5; // Number of recent files to include
+const numberOfFiles = 12; // Number of recent files to include (4x3 grid)
 const outputFilename = './fauxcode-wallpaper.png';
 
 // 4K wallpaper dimensions
@@ -20,8 +20,8 @@ const options = {
   fontSize: 4, // Line thickness and width (same for all faux codes)
   leading: 8, // Space between lines (tighter for multiple files)
   lineCap: 'round', // Line ends 'square' or 'round'
-  margin: 10, // Space between canvas edges and code block (reduced to minimise gaps)
-  lineNumbers: true, // Whether or not to include line numbers
+  margin: 0, // No margin to fill entire space
+  lineNumbers: false, // Disable line numbers to maximize code area
   lineNumberOffset: -3, // Line number offset from margin
 };
 
@@ -29,15 +29,18 @@ const options = {
  * Convert code file content to DOM elements for FauxCode
  */
 const codeToDOM = (codeContent, language = 'javascript') => {
-  const lines = codeContent.split('\n').slice(0, 30); // Limit to 30 lines per file
+  const maxLineWidth = 60; // Limit max line width to normalize column widths
+  const lines = codeContent.split('\n').slice(0, 50); // Limit to 50 lines per file
   const { window } = new JSDOM(`<!DOCTYPE html><html><body></body></html>`);
   const { document } = window;
 
   const elements = lines.map((line) => {
+    // Truncate lines longer than maxLineWidth
+    const truncatedLine = line.length > maxLineWidth ? line.slice(0, maxLineWidth) : line;
     const div = document.createElement('div');
     div.className = 'blob-code-inner';
     const span = document.createElement('span');
-    span.textContent = line || '\n';
+    span.textContent = truncatedLine || '\n';
     div.appendChild(span);
     return div;
   });
@@ -69,7 +72,7 @@ const generateFauxCodeForFile = (filePath) => {
 /**
  * Combine multiple SVGs into a single 4K PNG wallpaper
  * - Uses a single global scale factor so line thickness is consistent
- * - Packs faux codes in a tight grid so the wallpaper is well filled
+ * - Packs faux codes tightly edge-to-edge with no gaps
  */
 const combineSVGsToWallpaper = async (svgData) => {
   // Create a background
@@ -82,26 +85,25 @@ const combineSVGsToWallpaper = async (svgData) => {
     },
   }).png();
 
-  // Grid layout based on number of faux codes
+  // Grid layout: force exactly 4 columns
   const count = svgData.length;
-  const cols = Math.ceil(Math.sqrt(count));
+  const cols = 4;
   const rows = Math.ceil(count / cols);
 
-  // Find the maximum faux-code size so we can size cells consistently
+  // Exact cell dimensions to fill entire wallpaper with no gaps
+  const cellWidth = WALLPAPER_WIDTH / cols;
+  const cellHeight = WALLPAPER_HEIGHT / rows;
+
+  // Find the maximum faux-code size for consistent scaling
   const maxWidth = Math.max(...svgData.map((s) => s.width));
   const maxHeight = Math.max(...svgData.map((s) => s.height));
 
-  // Single global scale factor so line thickness is consistent
-  const globalScale = Math.min(
-    WALLPAPER_WIDTH / (cols * maxWidth),
-    WALLPAPER_HEIGHT / (rows * maxHeight),
-  );
+  // Calculate scale to fit maximum faux-code into cell dimensions
+  const scaleX = cellWidth / maxWidth;
+  const scaleY = cellHeight / maxHeight;
+  const globalScale = Math.min(scaleX, scaleY);
 
-  // Cell size after scaling
-  const cellWidth = maxWidth * globalScale;
-  const cellHeight = maxHeight * globalScale;
-
-  // Convert each SVG to PNG and position them
+  // Convert each SVG to PNG and position them edge-to-edge
   const composites = [];
   for (let i = 0; i < svgData.length; i += 1) {
     const { svg, width, height } = svgData[i];
@@ -114,13 +116,9 @@ const combineSVGsToWallpaper = async (svgData) => {
     const scaledWidth = Math.floor(width * globalScale);
     const scaledHeight = Math.floor(height * globalScale);
 
-    // Top-left of this cell in the wallpaper
-    const cellX = col * cellWidth;
-    const cellY = row * cellHeight;
-
-    // Center faux-code inside its cell
-    const x = cellX + (cellWidth - scaledWidth) / 2;
-    const y = cellY + (cellHeight - scaledHeight) / 2;
+    // Place edge-to-edge with no gaps or centering
+    const x = col * cellWidth;
+    const y = row * cellHeight;
 
     try {
       const pngBuffer = await sharp(Buffer.from(svg))
@@ -142,7 +140,9 @@ const combineSVGsToWallpaper = async (svgData) => {
 
   console.log(`Wallpaper created: ${outputFilename}`);
   console.log(`Dimensions: ${WALLPAPER_WIDTH}x${WALLPAPER_HEIGHT}`);
-  console.log(`Files included: ${svgData.length}`);
+  console.log(`Grid: ${cols}x${rows} (${svgData.length} files)`);
+  console.log(`Cell size: ${Math.floor(cellWidth)}x${Math.floor(cellHeight)}px`);
+  console.log(`Global scale: ${globalScale.toFixed(3)}x`);
 };
 
 // Main execution
