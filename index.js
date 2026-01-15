@@ -17,10 +17,10 @@ const WALLPAPER_HEIGHT = 2160;
 
 const options = {
   theme: 'dark', // 'light' or 'dark' mode
-  fontSize: 4, // Line thickness and width (smaller for multiple files)
+  fontSize: 4, // Line thickness and width (same for all faux codes)
   leading: 8, // Space between lines (tighter for multiple files)
   lineCap: 'round', // Line ends 'square' or 'round'
-  margin: 30, // Space between canvas edges and code block (smaller)
+  margin: 10, // Space between canvas edges and code block (reduced to minimise gaps)
   lineNumbers: true, // Whether or not to include line numbers
   lineNumberOffset: -3, // Line number offset from margin
 };
@@ -68,6 +68,8 @@ const generateFauxCodeForFile = (filePath) => {
 
 /**
  * Combine multiple SVGs into a single 4K PNG wallpaper
+ * - Uses a single global scale factor so line thickness is consistent
+ * - Packs faux codes in a tight grid so the wallpaper is well filled
  */
 const combineSVGsToWallpaper = async (svgData) => {
   // Create a background
@@ -80,32 +82,45 @@ const combineSVGsToWallpaper = async (svgData) => {
     },
   }).png();
 
-  // Calculate grid layout
-  const cols = Math.ceil(Math.sqrt(svgData.length));
-  const rows = Math.ceil(svgData.length / cols);
-  const cellWidth = Math.floor(WALLPAPER_WIDTH / cols);
-  const cellHeight = Math.floor(WALLPAPER_HEIGHT / rows);
+  // Grid layout based on number of faux codes
+  const count = svgData.length;
+  const cols = Math.ceil(Math.sqrt(count));
+  const rows = Math.ceil(count / cols);
+
+  // Find the maximum faux-code size so we can size cells consistently
+  const maxWidth = Math.max(...svgData.map((s) => s.width));
+  const maxHeight = Math.max(...svgData.map((s) => s.height));
+
+  // Single global scale factor so line thickness is consistent
+  const globalScale = Math.min(
+    WALLPAPER_WIDTH / (cols * maxWidth),
+    WALLPAPER_HEIGHT / (rows * maxHeight),
+  );
+
+  // Cell size after scaling
+  const cellWidth = maxWidth * globalScale;
+  const cellHeight = maxHeight * globalScale;
 
   // Convert each SVG to PNG and position them
   const composites = [];
-  for (let i = 0; i < svgData.length; i++) {
+  for (let i = 0; i < svgData.length; i += 1) {
     const { svg, width, height } = svgData[i];
 
-    // Calculate position in grid
+    // Row/column in the grid
     const col = i % cols;
     const row = Math.floor(i / cols);
 
-    // Scale SVG to fit cell while maintaining aspect ratio
-    const scale = Math.min(
-      (cellWidth - 40) / width,
-      (cellHeight - 40) / height
-    );
-    const scaledWidth = Math.floor(width * scale);
-    const scaledHeight = Math.floor(height * scale);
+    // Scale using the shared factor
+    const scaledWidth = Math.floor(width * globalScale);
+    const scaledHeight = Math.floor(height * globalScale);
 
-    // Center in cell
-    const x = col * cellWidth + (cellWidth - scaledWidth) / 2;
-    const y = row * cellHeight + (cellHeight - scaledHeight) / 2;
+    // Top-left of this cell in the wallpaper
+    const cellX = col * cellWidth;
+    const cellY = row * cellHeight;
+
+    // Center faux-code inside its cell
+    const x = cellX + (cellWidth - scaledWidth) / 2;
+    const y = cellY + (cellHeight - scaledHeight) / 2;
 
     try {
       const pngBuffer = await sharp(Buffer.from(svg))
@@ -119,14 +134,11 @@ const combineSVGsToWallpaper = async (svgData) => {
         left: Math.floor(x),
       });
     } catch (error) {
-      console.error(`Error converting SVG to PNG:`, error.message);
+      console.error('Error converting SVG to PNG:', error.message);
     }
   }
 
-  // Composite all images onto the background
-  const wallpaper = await background
-    .composite(composites)
-    .toFile(outputFilename);
+  await background.composite(composites).toFile(outputFilename);
 
   console.log(`Wallpaper created: ${outputFilename}`);
   console.log(`Dimensions: ${WALLPAPER_WIDTH}x${WALLPAPER_HEIGHT}`);
