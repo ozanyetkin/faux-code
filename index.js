@@ -20,7 +20,7 @@ const options = {
   fontSize: 4, // Line thickness and width (same for all faux codes)
   leading: 8, // Space between lines (tighter for multiple files)
   lineCap: 'round', // Line ends 'square' or 'round'
-  margin: 0, // No margin to fill entire space
+  margin: 15, // Margin around code to prevent cropping
   lineNumbers: false, // Disable line numbers to maximize code area
   lineNumberOffset: -3, // Line number offset from margin
 };
@@ -29,7 +29,7 @@ const options = {
  * Convert code file content to DOM elements for FauxCode
  */
 const codeToDOM = (codeContent, language = 'javascript') => {
-  const maxLineWidth = 60; // Limit max line width to normalize column widths
+  const maxLineWidth = 120; // Limit max line width to normalize column widths
   const lines = codeContent.split('\n').slice(0, 50); // Limit to 50 lines per file
   const { window } = new JSDOM(`<!DOCTYPE html><html><body></body></html>`);
   const { document } = window;
