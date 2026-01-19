@@ -18,10 +18,10 @@ const WALLPAPER_HEIGHT = 2160;
 
 const options = {
   theme: 'dark', // 'light' or 'dark' mode
-  fontSize: 6, // Line thickness and width (same for all faux codes)
-  leading: 12, // Space between lines (tighter for multiple files)
+  fontSize: 48, // Line thickness and width (same for all faux codes)
+  leading: 96, // Space between lines (tighter for multiple files)
   lineCap: 'round', // Line ends 'square' or 'round'
-  margin: 15, // Margin around code to prevent cropping
+  margin: 24, // Margin around code to prevent cropping
   lineNumbers: false, // Disable line numbers to maximize code area
   lineNumberOffset: -3, // Line number offset from margin
 };
